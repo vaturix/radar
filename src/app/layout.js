@@ -2,10 +2,10 @@
 
 import { Inter } from 'next/font/google';
 import './globals.css';
-import { Header } from '@/components/Header';
-import { VerticalNavbar } from '@/components/VerticalNavbar';
-import { MainNavbar } from '@/components/MainNavbar'; // MainNavbar bileşenini import ettik
-import ZoomWrapper from '@/components/ZoomWrapper';
+import { Header } from '../components/Header';
+import { VerticalNavbar } from '../components/VerticalNavbar';
+import { MainNavbar } from '../components/MainNavbar'; // MainNavbar bileşenini import ettik
+import ZoomWrapper from '../components/ZoomWrapper';
 import dynamic from "next/dynamic";
 import React, { useState, useEffect } from 'react'; // useEffect'i React'tan import ettik
 
