@@ -1,0 +1,90 @@
+/* globals.css */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply m-0;
+  font-family: 'Inter', sans-serif;
+}
+
+
+
+.chart-container {
+  position: relative;
+  height: 90vh !important;
+  width: 50vw ;
+  z-index: 1; /* z-index değeri eklendi */
+}
+
+.hs-overlay {
+  will-change: transform;
+  overflow: auto;
+  transform: translateX(-100%);
+}
+
+.hs-overlay-open {
+  transform: translateX(0);
+}
+
+.chart {
+  width: 100%;
+  height: 100%;
+}
+
+.chart-container > canvas {
+  height: 100% !important;
+  width: 100% !important;
+}
+
+.labels {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none; /* Prevents interaction with the label container */
+}
+
+.label {
+  position: absolute;
+  transform-origin: center;
+  white-space: nowrap;
+}
+
+.rich-text {
+  white-space: pre-wrap;
+  line-height: 1.6;
+}
+
+.rich-text p {
+  margin-bottom: 1em;
+}
+
+.rich-text del {
+  text-decoration: line-through;
+}
+
+
+/* width */
+::-webkit-scrollbar {
+  width: 5px;
+}
+
+/* Track */
+::-webkit-scrollbar-track {
+  background: #cecece;
+  border-radius: 5px;
+}
+
+/* Handle */
+::-webkit-scrollbar-thumb {
+  background: #bebebe;
+  border-radius: 5px;
+}
+
+/* Handle on hover */
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
