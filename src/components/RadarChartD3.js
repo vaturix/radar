@@ -4,8 +4,8 @@ import React, { useRef, useEffect, useState } from 'react';
 import * as d3 from 'd3';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
-import ReactDOMServer from 'react-dom/server'; // Import ReactDOMServer
-import ProgressBar from './TooltipProgressBar'; // Import the ProgressBar component
+import ReactDOMServer from 'react-dom/server';
+import ProgressBar from './TooltipProgressBar';
 import styles from '../app/RadarChart.module.css';
 
 const RadarChartD3 = ({ toggleSidebar, isSidebarOpen }) => {
@@ -15,63 +15,55 @@ const RadarChartD3 = ({ toggleSidebar, isSidebarOpen }) => {
   const [colors, setColors] = useState([]);
   const [ids, setIds] = useState([]);
   const [isMainTechnology, setIsMainTechnology] = useState([]);
-  const [images, setImages] = useState([]);  // New state for images
-  const [thsNames, setThsNames] = useState([]);  // New state for THS names
-  const [thsPoints, setThsPoints] = useState([]);  // New state for THS points
+  const [images, setImages] = useState([]);
+  const [thsNames, setThsNames] = useState([]);
+  const [thsPoints, setThsPoints] = useState([]);
   const router = useRouter();
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const technologiesResponse = await axios.get('http://localhost:1337/api/main-technologies');
-        const technologies = technologiesResponse.data.data;
-
-        const solutionsResponse = await axios.get('http://localhost:1337/api/solutions?populate=main_technology,teknoloji_hazirlik_duezeyi,image');
-        const solutions = solutionsResponse.data.data;
+        // Fetch sub-tech data
+        const subTechResponse = await axios.get('https://localhost:44307/api/app/sub-teches');
+        const subTechItems = subTechResponse.data.items;
 
         const combinedLabels = [];
         const combinedData = [];
         const combinedColors = [];
         const combinedIds = [];
         const combinedIsMainTechnology = [];
-        const combinedImages = [];  // New array for images
-        const combinedThsNames = [];  // New array for THS names
-        const combinedThsPoints = [];  // New array for THS points
+        const combinedImages = [];
+        const combinedThsNames = [];
+        const combinedThsPoints = [];
 
-        technologies.forEach(tech => {
-          combinedLabels.push(tech.attributes.title);
-          combinedData.push(null);
-          combinedColors.push('#000000');
-          combinedIds.push(tech.id);
-          combinedIsMainTechnology.push(true);
-          combinedImages.push(null);  // No image for main technologies
-          combinedThsNames.push(null);  // No THS name for main technologies
-          combinedThsPoints.push(null);  // No THS points for main technologies
+        // Fetch details for each sub-tech
+        for (const subTech of subTechItems) {
+          const detailsResponse = await axios.get(`https://localhost:44307/api/app/sub-teches/${subTech.id}/with-navigation-properties`);
+          const details = detailsResponse.data;
 
-          solutions.forEach(solution => {
-            if (solution.attributes.main_technology.data.id === tech.id) {
-              combinedLabels.push(solution.attributes.title);
-              const radarPoint = solution.attributes.teknoloji_hazirlik_duezeyi.data?.attributes.radarPoint || 0;
-              combinedData.push(24 - radarPoint);
-              combinedColors.push(tech.attributes.color || '#000000');
-              combinedIds.push(solution.id);
-              combinedIsMainTechnology.push(false);
-              const imageUrl = solution.attributes.image?.data?.[0]?.attributes?.url ? `http://localhost:1337${solution.attributes.image.data[0].attributes.url}` : null;
-              combinedImages.push(imageUrl);
-              combinedThsNames.push(solution.attributes.teknoloji_hazirlik_duezeyi.data?.attributes?.thsName || 'Unknown');
-              combinedThsPoints.push(solution.attributes.teknoloji_hazirlik_duezeyi.data?.attributes?.blogPoint || 0);
-            }
-          });
-        });
+          const mainTechnology = details.mainTeches?.[0];
+          const mainTechColor = mainTechnology?.color || '#000000';
+
+          combinedLabels.push(subTech.name);
+          combinedData.push(24 - (details.radarLayerLevel?.point || 0));
+          combinedColors.push(mainTechColor);
+          combinedIds.push(subTech.id);
+          combinedIsMainTechnology.push(false);
+
+          const imageUrl = subTech.imageId ? `https://localhost:44307/api/files/${subTech.imageId}` : null;
+          combinedImages.push(imageUrl);
+          combinedThsNames.push(details.effectLevel?.name || 'Unknown');
+          combinedThsPoints.push(details.effectLevel?.level || 0);
+        }
 
         setLabels(combinedLabels);
         setData(combinedData);
         setColors(combinedColors);
         setIds(combinedIds);
         setIsMainTechnology(combinedIsMainTechnology);
-        setImages(combinedImages);  // Set images
-        setThsNames(combinedThsNames);  // Set THS names
-        setThsPoints(combinedThsPoints);  // Set THS points
+        setImages(combinedImages);
+        setThsNames(combinedThsNames);
+        setThsPoints(combinedThsPoints);
       } catch (error) {
         console.error("Error fetching data: ", error);
       }
@@ -86,9 +78,7 @@ const RadarChartD3 = ({ toggleSidebar, isSidebarOpen }) => {
     const width = 500;
     const height = 750;
     const margin = { top: 50, right: 50, bottom: 50, left: 50 };
-
     const circleTexts = ['Yaygınlaştır', 'Dene', 'Düşün', 'Bekle'];
-
     const svg = d3.select(svgRef.current)
       .attr('viewBox', `0 0 ${width + margin.left + margin.right} ${height + margin.top + margin.bottom}`)
       .attr('preserveAspectRatio', 'xMidYMid meet')
@@ -189,42 +179,26 @@ const RadarChartD3 = ({ toggleSidebar, isSidebarOpen }) => {
         .style('cursor', ids[i] ? 'pointer' : 'default')
         .on('click', () => {
           if (ids[i]) {
-            if (!isSidebarOpen) {
-              toggleSidebar();
-            }
-            setTimeout(() => {
-              router.push(isMainTechnology[i] ? `/mainTechnologies/${ids[i]}` : `/solutions/${ids[i]}`);
-            }, 300);
+            if (!isSidebarOpen) toggleSidebar();
+            setTimeout(() => router.push(`/solutions/${ids[i]}`), 300);
           }
         });
-
-      svg.selectAll('text').each(function () {
-        const textElement = d3.select(this);
-        const computedFontSize = parseFloat(window.getComputedStyle(this).fontSize);
-        if (computedFontSize > 10) {
-          textElement.style('font-size', '10px');
-        }
-      });
     });
 
-    // Create a tooltip element
+    // Tooltip setup
     const tooltip = d3.select('body').append('div')
       .attr('class', styles.tooltip)
       .style('visibility', 'hidden');
 
-    // Function to create the content of the tooltip
-    const createTooltipContent = (label, image, thsName, color, percentage) => {
-      return `
+    const createTooltipContent = (label, image, thsName, color, percentage) => `
         <img src="${image}" alt="${label}" style="width: 100%; height: auto;"/>
         <h4 style="color: ${color};">${label}</h4>
         <p style="color: ${color};">${thsName}</p>
         ${ReactDOMServer.renderToString(<ProgressBar blogPoint={percentage} color={color} />)}
       `;
-    };
 
     data.forEach((d, i) => {
       if (d === null) return;
-
       const angle = angleSlice * i;
       const x = radialScale(d) * Math.cos(angle - Math.PI / 2);
       const y = radialScale(d) * Math.sin(angle - Math.PI / 2);
@@ -236,68 +210,29 @@ const RadarChartD3 = ({ toggleSidebar, isSidebarOpen }) => {
         .attr('y2', y)
         .attr('stroke', 'rgba(0, 0, 0, 0)');
 
-      const xOuter = radialScale(24) * Math.cos(angle - Math.PI / 2);
-      const yOuter = radialScale(24) * Math.sin(angle - Math.PI / 2);
-
-      svg.append('line')
-        .attr('x1', x)
-        .attr('y1', y)
-        .attr('x2', xOuter)
-        .attr('y2', yOuter)
-        .attr('stroke', colors[i])
-        .attr('stroke-width', 1)
-        .attr('stroke-dasharray', '0.5 , 3')
-        .attr('stroke-linecap', 'round')
-        .attr('stroke-opacity', 0.3);
-
       svg.append('circle')
-        .attr('cx', x)
-        .attr('cy', y)
-        .attr('r', 10)
-        .attr('fill', 'white')
-        .attr('fill-opacity', 0.2)
-        .style('filter', 'url(#drop-shadow)');
-
-      const point = svg.append('circle')
         .attr('cx', x)
         .attr('cy', y)
         .attr('r', 5)
         .attr('fill', colors[i])
         .attr('fill-opacity', 0.7)
-        .attr('stroke-width', 1)
         .style('filter', 'url(#drop-shadow)')
         .style('cursor', ids[i] ? 'pointer' : 'default')
         .on('click', () => {
           if (ids[i]) {
-            if (!isSidebarOpen) {
-              toggleSidebar();
-            }
-            setTimeout(() => {
-              router.push(`/solutions/${ids[i]}`);
-            }, 300);
+            if (!isSidebarOpen) toggleSidebar();
+            setTimeout(() => router.push(`/solutions/${ids[i]}`), 300);
           }
         })
-        .on('mouseover', function (event) {
-          const tooltipData = {
-            title: labels[i],
-            image: images[i] || 'https://via.placeholder.com/50',  // Use actual image URL or placeholder
-            thsName: thsNames[i],
-            color: colors[i],
-            percentage: thsPoints[i]
-          };
+        .on('mouseover', () => {
+          const tooltipData = { title: labels[i], image: images[i] || 'https://via.placeholder.com/50', thsName: thsNames[i], color: colors[i], percentage: thsPoints[i] };
           tooltip.html(createTooltipContent(tooltipData.title, tooltipData.image, tooltipData.thsName, tooltipData.color, tooltipData.percentage))
-            .style('border-color', tooltipData.color) // Set border color
+            .style('border-color', tooltipData.color)
             .style('visibility', 'visible');
         })
-        .on('mousemove', function (event) {
-          tooltip.style('top', (event.pageY - 10) + 'px')
-            .style('left', (event.pageX + 10) + 'px');
-        })
-        .on('mouseout', function () {
-          tooltip.style('visibility', 'hidden');
-        });
+        .on('mousemove', (event) => tooltip.style('top', `${event.pageY - 10}px`).style('left', `${event.pageX + 10}px`))
+        .on('mouseout', () => tooltip.style('visibility', 'hidden'));
     });
-
   }, [data, labels, colors, ids, images, thsNames, thsPoints, router, isSidebarOpen, toggleSidebar]);
 
   return <svg ref={svgRef} className={`${styles.chart} h-full w-full`}></svg>;
